@@ -2,58 +2,65 @@ import { faker } from "@faker-js/faker"
 import _ from "lodash"
 import fs from "node:fs/promises"
 
+const USERS_COUNT = 20
+const MIN_MESSAGES_COUNT = 2
+const MAX_MESSAGES_COUNT = 10
+const MAX_MESSAGES_SENTENCES = 3
+const MIN_MESSAGE_DATE = 1577836800000
+const MAX_MESSAGE_DATE = Date.now()
+const MAX_POSTS_COUNT = 5
+const MAX_TITLE_LENGTH = 4
+const POST_IMAGE_WIDTH = 480
+const POST_IMAGE_HEIGHT = 270
+const SAVE_PATH = "./tables/"
+const IS_DYNAMODB = true
+
 let users = []
 let messages = []
 let posts = []
-const usersCount = 20
-const minMessagesCount = 2
-const maxMessagesCount = 10
-const maxMessageSentences = 3
-const minMessageDate = 1577836800000
-const maxMessageDate = Date.now()
-const maxPostsCount = 5
-const maxTitleLength = 4
-const postImageWidth = 480
-const postImageHeight = 270
 
 const createRandomUser = (userId) => {
 	const gender = faker.datatype.boolean() ? "male" : "female"
 	const firstName = faker.name.firstName(gender)
 	const lastName = faker.name.lastName(gender)
 	const provider = "example.com"
-	const user = {
-		userId: userId,
-		firstName: firstName,
-		lastName: lastName,
-		email: faker.internet.email(firstName, lastName, provider),
-		avatarUrl: faker.image.avatar(),
-		userName: faker.internet.userName(firstName, lastName),
+	const email = faker.internet.email(firstName, lastName, provider)
+	const avatarUrl = faker.image.avatar()
+	const userName = faker.internet.userName(firstName, lastName)
+	let user = {}
+	if (IS_DYNAMODB) {
+		user = {
+			userId: { N: userId.toString() },
+			firstName: { S: firstName },
+			lastName: { S: lastName },
+			email: { S: email },
+			avatarUrl: { S: avatarUrl },
+			userName: { S: userName },
+		}
+	} else {
+		user = {
+			userId: userId,
+			firstName: firstName,
+			lastName: lastName,
+			email: email,
+			avatarUrl: avatarUrl,
+			userName: userName,
+		}
 	}
+
 	users = [...users, user]
 }
 
 const createMessages = (userId) => {
-	const messagesCount = faker.datatype.number({ max: maxMessagesCount, min: minMessagesCount })
-	let correspondence = []
-	Array.from({ length: usersCount }).forEach((el, index) => {
+	const userMessagesCount = faker.datatype.number({
+		max: MAX_MESSAGES_COUNT,
+		min: MIN_MESSAGES_COUNT,
+	})
+	Array.from({ length: USERS_COUNT }).forEach((el, index) => {
 		if (index + 1 !== userId) {
-			correspondence = [
-				...correspondence,
-				{
-					targetUserId: index + 1,
-					messages: generateUserMessages(messagesCount),
-				},
-			]
+			messages = [...messages, ...generateUserMessages(userMessagesCount, userId, index + 1)]
 		}
 	})
-
-	messages = [
-		...messages,
-		{
-			userId: userId,
-			correspondence: correspondence,
-		},
-	]
 }
 
 const generateUniqueNumbersArray = (arrayLength, maxNumber) => {
@@ -71,33 +78,66 @@ const generateUniqueNumbersArray = (arrayLength, maxNumber) => {
 	return uniqueArray
 }
 
-const generateMessage = () => {
-	const date = faker.datatype.datetime({ min: minMessageDate, max: maxMessageDate })
-	return {
-		text: faker.lorem.sentences(faker.datatype.number({ max: maxMessageSentences, min: 1 })),
-		timestamp: date.getTime(),
-		isOwn: faker.datatype.boolean(),
+const generateMessage = (userId, targetUserId, messageId) => {
+	const date = faker.datatype.datetime({ min: MIN_MESSAGE_DATE, max: MAX_MESSAGE_DATE })
+	const text = faker.lorem.sentences(faker.datatype.number({ max: MAX_MESSAGES_SENTENCES, min: 1 }))
+	const timestamp = date.getTime()
+	if (IS_DYNAMODB) {
+		return {
+			messageId: { N: messageId.toString() },
+			text: { S: text },
+			timestamp: { N: timestamp.toString() },
+			targetUserId: { N: targetUserId.toString() },
+			userId: { N: userId.toString() },
+		}
+	} else {
+		return {
+			messageId: messageId,
+			text: text,
+			timestamp: timestamp,
+			targetUserId: targetUserId,
+			userId: userId,
+		}
 	}
 }
 
-const generateUserMessages = (messagesCount) => {
-	let messages = Array.from({ length: messagesCount }).map(() => generateMessage())
-	messages.sort((a, b) => sortByNumber(a.timestamp, b.timestamp))
-	return messages
+let lastMessageId = 1
+
+const generateUserMessages = (userMessagesCount, userId, targetUserId) => {
+	let correspondence = Array.from({ length: userMessagesCount }).map((el, index) =>
+		generateMessage(userId, targetUserId, index + lastMessageId)
+	)
+	lastMessageId = lastMessageId + userMessagesCount
+	return correspondence
 }
 
-const generatePost = (id, userId) => ({
-	id: id,
-	userId: userId,
-	title: faker.lorem.sentence(faker.datatype.number({ max: maxTitleLength, min: 2 })),
-	text: faker.lorem.text(),
-	imageUrl: faker.image.abstract(postImageWidth, postImageHeight, true),
-})
+const generatePost = (id, userId) => {
+	const title = faker.lorem.sentence(faker.datatype.number({ max: MAX_TITLE_LENGTH, min: 2 }))
+	const text = faker.lorem.text()
+	const imageUrl = faker.image.abstract(POST_IMAGE_WIDTH, POST_IMAGE_HEIGHT, true)
+	if (IS_DYNAMODB) {
+		return {
+			postId: { N: id.toString() },
+			userId: { N: userId.toString() },
+			title: { S: title },
+			text: { S: text },
+			imageUrl: { S: imageUrl },
+		}
+	} else {
+		return {
+			postId: id,
+			userId: userId,
+			title: title,
+			text: text,
+			imageUrl: imageUrl,
+		}
+	}
+}
 
 let lastPostId = 1
 
 const createPosts = (userId) => {
-	const postCount = faker.datatype.number({ max: maxPostsCount, min: 1 })
+	const postCount = faker.datatype.number({ max: MAX_POSTS_COUNT, min: 1 })
 	let newPost = Array.from({ length: postCount }).map((el, index) =>
 		generatePost(index + lastPostId, userId)
 	)
@@ -114,7 +154,7 @@ const sortByNumber = (a, b) => {
 	return 0
 }
 
-Array.from({ length: usersCount }).forEach((el, index) => {
+Array.from({ length: USERS_COUNT }).forEach((el, index) => {
 	let userId = index + 1
 	createRandomUser(userId)
 	createMessages(userId)
@@ -122,15 +162,28 @@ Array.from({ length: usersCount }).forEach((el, index) => {
 })
 
 const saveData = async (content, filename) => {
+	let newContent = ""
+	if (IS_DYNAMODB) {
+		filename = "dynamodb_" + filename
+		newContent = JSON.stringify(
+			{
+				Items: content,
+			},
+			null,
+			"\t"
+		)
+	} else {
+		newContent = JSON.stringify(content, null, "\t")
+	}
+
 	try {
-		await fs.writeFile(filename + ".json", content)
+		await fs.writeFile(SAVE_PATH + filename + ".json", newContent)
+		console.log("Finished " + filename + "!")
 	} catch (error) {
 		console.log(error)
 	}
 }
 
-saveData(JSON.stringify(users, null, "\t"), "users").then(() => console.log("Finished users!"))
-saveData(JSON.stringify(posts, null, "\t"), "posts").then(() => console.log("Finished posts!"))
-saveData(JSON.stringify(messages, null, "\t"), "messages").then(() =>
-	console.log("Finished messages!")
-)
+saveData(users, "users")
+saveData(posts, "posts")
+saveData(messages, "messages")
