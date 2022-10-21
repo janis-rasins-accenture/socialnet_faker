@@ -19,6 +19,11 @@ let users = []
 let messages = []
 let posts = []
 
+const generateDate = () => {
+	const date = faker.datatype.datetime({ min: MIN_MESSAGE_DATE, max: MAX_MESSAGE_DATE })
+	return date.getTime()
+}
+
 const createRandomUser = (userId) => {
 	const gender = faker.datatype.boolean() ? "male" : "female"
 	const firstName = faker.name.firstName(gender)
@@ -79,9 +84,8 @@ const generateUniqueNumbersArray = (arrayLength, maxNumber) => {
 }
 
 const generateMessage = (userId, targetUserId, messageId) => {
-	const date = faker.datatype.datetime({ min: MIN_MESSAGE_DATE, max: MAX_MESSAGE_DATE })
+	const timestamp = generateDate()
 	const text = faker.lorem.sentences(faker.datatype.number({ max: MAX_MESSAGES_SENTENCES, min: 1 }))
-	const timestamp = date.getTime()
 	if (IS_DYNAMODB) {
 		return {
 			messageId: { N: messageId.toString() },
@@ -114,6 +118,7 @@ const generateUserMessages = (userMessagesCount, userId, targetUserId) => {
 const generatePost = (id, userId) => {
 	const title = faker.lorem.sentence(faker.datatype.number({ max: MAX_TITLE_LENGTH, min: 2 }))
 	const text = faker.lorem.text()
+	const timestamp = generateDate()
 	const imageUrl = faker.image.abstract(POST_IMAGE_WIDTH, POST_IMAGE_HEIGHT, true)
 	if (IS_DYNAMODB) {
 		return {
@@ -122,6 +127,7 @@ const generatePost = (id, userId) => {
 			title: { S: title },
 			text: { S: text },
 			imageUrl: { S: imageUrl },
+			timestamp: { N: timestamp.toString() },
 		}
 	} else {
 		return {
@@ -130,6 +136,7 @@ const generatePost = (id, userId) => {
 			title: title,
 			text: text,
 			imageUrl: imageUrl,
+			timestamp: timestamp,
 		}
 	}
 }
