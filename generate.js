@@ -41,6 +41,7 @@ const createRandomUser = (userId) => {
 			email: { S: email },
 			avatarUrl: { S: avatarUrl },
 			userName: { S: userName },
+			isActive: { N: "1" },
 		}
 	} else {
 		user = {
@@ -50,6 +51,7 @@ const createRandomUser = (userId) => {
 			email: email,
 			avatarUrl: avatarUrl,
 			userName: userName,
+			isActive: 1,
 		}
 	}
 
@@ -84,13 +86,13 @@ const generateUniqueNumbersArray = (arrayLength, maxNumber) => {
 }
 
 const generateMessage = (userId, targetUserId, messageId) => {
-	const timestamp = generateDate()
+	const unixTimestamp = generateDate()
 	const text = faker.lorem.sentences(faker.datatype.number({ max: MAX_MESSAGES_SENTENCES, min: 1 }))
 	if (IS_DYNAMODB) {
 		return {
 			messageId: { N: messageId.toString() },
 			text: { S: text },
-			timestamp: { N: timestamp.toString() },
+			unixTimestamp: { N: unixTimestamp.toString() },
 			targetUserId: { N: targetUserId.toString() },
 			userId: { N: userId.toString() },
 		}
@@ -98,7 +100,7 @@ const generateMessage = (userId, targetUserId, messageId) => {
 		return {
 			messageId: messageId,
 			text: text,
-			timestamp: timestamp,
+			unixTimestamp: unixTimestamp,
 			targetUserId: targetUserId,
 			userId: userId,
 		}
@@ -118,7 +120,7 @@ const generateUserMessages = (userMessagesCount, userId, targetUserId) => {
 const generatePost = (id, userId) => {
 	const title = faker.lorem.sentence(faker.datatype.number({ max: MAX_TITLE_LENGTH, min: 2 }))
 	const text = faker.lorem.text()
-	const timestamp = generateDate()
+	const unixTimestamp = generateDate()
 	const imageUrl = faker.image.abstract(POST_IMAGE_WIDTH, POST_IMAGE_HEIGHT, true)
 	if (IS_DYNAMODB) {
 		return {
@@ -127,7 +129,8 @@ const generatePost = (id, userId) => {
 			title: { S: title },
 			text: { S: text },
 			imageUrl: { S: imageUrl },
-			timestamp: { N: timestamp.toString() },
+			unixTimestamp: { N: unixTimestamp.toString() },
+			isActive: { N: "1" },
 		}
 	} else {
 		return {
@@ -136,7 +139,8 @@ const generatePost = (id, userId) => {
 			title: title,
 			text: text,
 			imageUrl: imageUrl,
-			timestamp: timestamp,
+			unixTimestamp: unixTimestamp,
+			isActive: 1,
 		}
 	}
 }
