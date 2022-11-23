@@ -3,6 +3,8 @@ import _ from "lodash"
 import fs from "node:fs/promises"
 
 const USERS_COUNT = 20
+const MIN_FOLLOWS_COUNT = 2
+const MAX_FOLLOWS_COUNT = 10
 const MIN_MESSAGES_COUNT = 2
 const MAX_MESSAGES_COUNT = 10
 const MAX_MESSAGES_SENTENCES = 3
@@ -24,6 +26,24 @@ const generateDate = () => {
 	return date.getTime()
 }
 
+const generateUniqueNumbersArray = (arrayLength, maxNumber) => {
+	let uniqueArray = []
+	if (arrayLength < maxNumber) {
+		let arrayNumber = 0
+		_.times(faker.datatype.number(arrayLength), () => {
+			arrayNumber = faker.datatype.number({ min: MIN_FOLLOWS_COUNT, max: MAX_FOLLOWS_COUNT })
+			if (IS_DYNAMODB) {
+				arrayNumber = arrayNumber.toString()
+			}
+			while (!uniqueArray.includes(arrayNumber)) {
+				uniqueArray = [...uniqueArray, arrayNumber]
+			}
+		})
+	}
+	uniqueArray.sort((a, b) => a - b)
+	return uniqueArray
+}
+
 const createRandomUser = (userId) => {
 	const gender = faker.datatype.boolean() ? "male" : "female"
 	const firstName = faker.name.firstName(gender)
@@ -42,6 +62,7 @@ const createRandomUser = (userId) => {
 			avatarUrl: { S: avatarUrl },
 			userName: { S: userName },
 			isActive: { N: "1" },
+			followed: { NS: generateUniqueNumbersArray(USERS_COUNT - 2, USERS_COUNT) },
 		}
 	} else {
 		user = {
@@ -52,6 +73,7 @@ const createRandomUser = (userId) => {
 			avatarUrl: avatarUrl,
 			userName: userName,
 			isActive: 1,
+			followed: generateUniqueNumbersArray(USERS_COUNT - 2, USERS_COUNT),
 		}
 	}
 
@@ -68,21 +90,6 @@ const createMessages = (userId) => {
 			messages = [...messages, ...generateUserMessages(userMessagesCount, userId, index + 1)]
 		}
 	})
-}
-
-const generateUniqueNumbersArray = (arrayLength, maxNumber) => {
-	let uniqueArray = []
-	if (arrayLength < maxNumber) {
-		let arrayNumber = 0
-		_.times(faker.datatype.number(arrayLength), function () {
-			arrayNumber = faker.datatype.number({ min: 1, max: maxNumber })
-			while (!uniqueArray.includes(arrayNumber)) {
-				uniqueArray = [...uniqueArray, arrayNumber]
-			}
-		})
-	}
-	uniqueArray.sort((a, b) => a - b)
-	return uniqueArray
 }
 
 const generateMessage = (userId, targetUserId, messageId) => {
