@@ -1,5 +1,4 @@
 import { faker } from "@faker-js/faker";
-import _ from "lodash";
 import fs from "node:fs/promises";
 
 const USERS_COUNT = 20;
@@ -29,22 +28,22 @@ const generateDate = () => {
   return date.getTime();
 };
 
-const generateUniqueNumbersArray = (arrayLength, maxNumber) => {
+const generateUniqueNumbersArray = () => {
   let uniqueArray = [];
-  if (arrayLength < maxNumber) {
-    let arrayNumber = 0;
-    _.times(faker.number.int(arrayLength), () => {
-      arrayNumber = faker.number.int({
-        min: MIN_FOLLOWS_COUNT,
-        max: MAX_FOLLOWS_COUNT,
-      });
-      if (IS_DYNAMODB) {
-        arrayNumber = arrayNumber.toString();
-      }
-      while (!uniqueArray.includes(arrayNumber)) {
-        uniqueArray = [...uniqueArray, arrayNumber];
-      }
-    });
+  const arrayLength = faker.number.int({
+    min: MIN_FOLLOWS_COUNT,
+    max: MAX_FOLLOWS_COUNT,
+  });
+  while (uniqueArray.length < arrayLength) {
+    const userId = faker.number
+      .int({
+        min: 1,
+        max: USERS_COUNT,
+      })
+      .toString();
+    if (!uniqueArray.includes(userId)) {
+      uniqueArray.push(userId);
+    }
   }
   uniqueArray.sort((a, b) => a - b);
   return uniqueArray;
@@ -69,7 +68,7 @@ const createRandomUser = (userId) => {
       userName: { S: userName },
       isActive: { N: "1" },
       followed: {
-        NS: generateUniqueNumbersArray(USERS_COUNT - 2, USERS_COUNT),
+        NS: generateUniqueNumbersArray(),
       },
     };
   } else {
@@ -81,7 +80,7 @@ const createRandomUser = (userId) => {
       avatarUrl: avatarUrl,
       userName: userName,
       isActive: 1,
-      followed: generateUniqueNumbersArray(USERS_COUNT - 2, USERS_COUNT),
+      followed: generateUniqueNumbersArray(),
     };
   }
 
