@@ -55,7 +55,13 @@ const createRandomUser = (userId) => {
   const lastName = faker.person.lastName(gender);
   const provider = "example.com";
   const email = faker.internet.email({ firstName, lastName, provider });
-  const avatarUrl = faker.image.avatar();
+  const avatarUrl = faker.image.urlLoremFlickr(
+    {
+      category: `people,${gender}`,
+      height: 200,
+      width: 200,
+    }
+  );
   const userName = faker.internet.userName({ firstName, lastName });
   let user = {};
   if (IS_DYNAMODB) {
